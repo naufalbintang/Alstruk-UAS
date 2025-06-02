@@ -59,7 +59,32 @@ void printHash(){
 }
 
 void login(){
-    cout << "Login" << endl;
+    string username{};
+    string password{};
+    int index{};
+
+    cout << "Masukkan username: "; cin >> username;
+    cout << "Masukkan password: "; cin >> password;
+
+
+    // login sebagai admin
+    if(username == "admin" && password == "admin123"){
+        cout << "Login sebagai admin" << endl;
+        return;
+    }
+
+    // login sebagai nasabah
+    index = hashFuction(password);
+    Node* travel = hashTable[index];
+    while(travel != nullptr){
+        if(username == travel->username && password == travel->password){
+            cout << "Berhasil login sebagai " << travel->username << endl;
+            return;
+        }
+        travel = travel->next;
+    }
+    cout << "Akun tidak ditemukan" << endl;
+
 }
 
 void registrasi(){
@@ -80,6 +105,10 @@ int main(){
     char pilihan;
     bool exit = false;
 
+    // akun dummy
+    insertHash("admin", "admin123");
+    insertHash("nasabah", "nasabah123");
+
     // clear console
     #ifdef _WIN32
         system("cls");
@@ -92,9 +121,9 @@ int main(){
         cout << "============" << endl;
         cout << "    BANK" << endl;
         cout << "============" << endl;
-        cout << "1. Login sebagai admin" << endl;
-        cout << "2. Login sebagai nasabah" << endl;
-        cout << "3. Register" << endl;
+        cout << "1. Login" << endl;
+        cout << "2. Register" << endl;
+        cout << "3. Tampilkan hash table" << endl;
         cout << "0. Keluar" << endl;
         cout << "Masukkan pilihan: "; cin >> pilihan;
         switch(pilihan){
@@ -104,10 +133,10 @@ int main(){
         case '1':
             login();
             break;
-        case '3':
+        case '2':
             registrasi();
             break;
-        case '4':
+        case '3':
             printHash();
             break;
         default:
