@@ -70,6 +70,7 @@ void login(){
     // login sebagai admin
     if(username == "admin" && password == "admin123"){
         cout << "Login sebagai admin" << endl;
+        // fitur admin (ganti aja return-nya)
         return;
     }
 
@@ -79,6 +80,7 @@ void login(){
     while(travel != nullptr){
         if(username == travel->username && password == travel->password){
             cout << "Berhasil login sebagai " << travel->username << endl;
+            // fitur nasabah (ganti aja return-nya)
             return;
         }
         travel = travel->next;
