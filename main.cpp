@@ -275,6 +275,8 @@ void registrasi() {
         }
     }
 
+    //a
+
     // pin valid?
     while (true) {
         cout << "Masukkan Pin (6 digit): ";
