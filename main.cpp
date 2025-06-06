@@ -275,7 +275,7 @@ void registrasi() {
         }
     }
 
-    //a
+    //ab
 
     // pin valid?
     while (true) {
