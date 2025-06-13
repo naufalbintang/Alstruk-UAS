@@ -25,16 +25,18 @@ struct TreeNode {
     string NIK;
     string noRekening;
     double SaldoAwal;
+    bool status;
     TreeNode* left;
     TreeNode* right;
 };
 
 
-TreeNode* bikinNode(string nik, string norek, double saldo) {
+TreeNode* bikinNode(string nik, string norek, double saldo, bool status = true) {
     TreeNode* nodeBaru = new TreeNode;
     nodeBaru->NIK = nik;
     nodeBaru->noRekening = norek;
     nodeBaru->SaldoAwal = saldo;
+    nodeBaru->status = status;
     nodeBaru->left = nullptr;
     nodeBaru->right = nullptr;
     return nodeBaru;
@@ -73,15 +75,34 @@ void insertHash(string username, string pin, string nik){
     }
 }
 
-TreeNode* insertTree(TreeNode* root, string nik, string norek, double saldo) {
+TreeNode* insertTree(string nik, string norek, double saldo, bool status = true) {
+    TreeNode* baru = bikinNode(nik, norek, saldo, status);
+
     if (root == nullptr) {
-        return bikinNode(nik, norek, saldo);
+        root = baru;
+        return root;
     }
 
-    if (nik < root->NIK)
-        root->left = insertTree(root->left, nik, norek, saldo);
-    else if (nik > root->NIK)
-        root->right = insertTree(root->right, nik, norek, saldo);
+    TreeNode* travelTree = root;
+    TreeNode* parent = nullptr;
+
+    while (travelTree != nullptr) {
+        parent = travelTree;
+        if (nik < travelTree->NIK) {
+            travelTree = travelTree->left;
+        } else if (nik > travelTree->NIK) {
+            travelTree = travelTree->right;
+        } else {
+            cout << "NIK sudah ada. Data tidak disisipkan.\n";
+            return root;
+        }
+    }
+
+    if (nik < parent->NIK) {
+        parent->left = baru;
+    } else {
+        parent->right = baru;
+    }
 
     return root;
 }
@@ -92,6 +113,7 @@ void inorderTree(TreeNode* root) {
         cout << "  NIK         : " << root->NIK << endl;
         cout << "  Rekening    : " << root->noRekening << endl;
         cout << "  Saldo Awal  : Rp " << fixed << setprecision(2) << root->SaldoAwal << endl;
+        cout << "  Status      : " << (root->status ? "AKTIF" : "BLOKIR") << endl;
         cout << "-----------------------------" << endl;
         inorderTree(root->right);
     }
@@ -129,6 +151,7 @@ void MergeDataStructure(TreeNode* root) {
             cout << "NIK         : " << root->NIK << endl;
             cout << "No Rekening : " << root->noRekening << endl;
             cout << "Saldo Awal  : " << fixed << setprecision(2) << root->SaldoAwal << endl;
+            cout << "Status      : " << (root->status ? "AKTIF" : "BLOKIR") << endl;
             cout << "-------------------" << endl;
         }
 
@@ -136,7 +159,7 @@ void MergeDataStructure(TreeNode* root) {
     }
 }
 
-void DisplayAllNasabah(TreeNode* root) {
+void DisplayAllNasabah() {
     cout << endl;
     cout << "===================" << endl;
     cout << "  DATA NASABAH" << endl;
@@ -146,33 +169,32 @@ void DisplayAllNasabah(TreeNode* root) {
 }
 
 // Cari NIK di Tree buat fitur di Admin
-void cariNIKTree(TreeNode* root, string nik) {
+void cariNIKTree(string nik) {
     if (nik == "111111") {
         cout << "Data dengan NIK " << nik << " tidak ditemukan.\n";
         return;
     }
-
     if (root == nullptr) {
         cout << "Tree kosong.\n";
         return;
     }
-
-    while (root != nullptr) {
-        if (nik < root->NIK) {
-            root = root-> left;
-        } else if (nik > root->NIK) {
-            root = root-> right;
+    TreeNode* travelTree = root; // GUNAKAN POINTER LOKAL
+    while (travelTree != nullptr) {
+        if (nik < travelTree->NIK) {
+            travelTree = travelTree->left;
+        } else if (nik > travelTree->NIK) {
+            travelTree = travelTree->right;
         } else {
-            Node* user = cariNIKHashTable(root->NIK);
-            
+            Node* user = cariNIKHashTable(travelTree->NIK);
             if (user != nullptr) {
                 cout << "\n=== Data Ditemukan ===\n";
                 cout << "Username       : " << user->username << endl;
                 cout << "PIN            : " << string(user->PIN.length(), '*') << endl;
-                cout << "NIK            : " << root->NIK << endl;
-                cout << "Nomor Rekening : " << root->noRekening << endl;
+                cout << "NIK            : " << travelTree->NIK << endl;
+                cout << "Nomor Rekening : " << travelTree->noRekening << endl;
                 cout << fixed << setprecision(2);
-                cout << "Saldo          : Rp " << root->SaldoAwal << endl;
+                cout << "Saldo          : Rp " << travelTree->SaldoAwal << endl;
+                cout << "Status         : " << (travelTree->status ? "AKTIF" : "BLOKIR") << endl;
                 cout << "========================\n\n";
             } else {
                 cout << "Data dengan NIK " << nik << " tidak ditemukan.\n";
@@ -211,6 +233,60 @@ void printHashAndTree(TreeNode* root) {
     }
 }
 
+void ubahStatusNasabah() {
+    if (root == nullptr) {
+        cout << "Pohon kosong. Tidak ada nasabah yang dapat diubah statusnya.\n";
+        return;
+    }
+
+    string nik;
+    char pilihan;
+
+    cout << "=== Ubah Status Nasabah ===\n";
+    cout << "1. Blokir Nasabah\n";
+    cout << "2. Buka Blokir Nasabah\n";
+    cout << "0. kembali ke menu admin\n";
+    cout << "Pilihan: "; 
+    cin >> pilihan;
+    if (pilihan == '0') return;
+    if (pilihan != '1' && pilihan != '2') {
+        cout << "Pilihan tidak valid.\n";
+        return;
+    }
+
+    cout << "Masukkan NIK Nasabah: ";
+    cin >> nik;
+
+    bool statusBaru;
+
+    if (nik == "111111") {
+        cout << "Tidak dapat mengubah status admin.\n";
+        return;
+    }
+
+    if (pilihan == '1') statusBaru = false;
+    else if (pilihan == '2') statusBaru = true;
+    else {
+        cout << "pilihan tidak valid.\n";
+        return;
+    }
+
+    TreeNode* travelTree = root;
+    while (travelTree != nullptr) {
+        if (nik < travelTree->NIK) {
+            travelTree = travelTree->left;
+        } else if (nik > travelTree->NIK) {
+            travelTree = travelTree->right; 
+        } else {
+            travelTree->status = statusBaru;
+            cout << "Status nasabah dengan NIK " << nik << " telah diubah menjadi "
+                 << (statusBaru ? "AKTIF" : "BLOKIR") << ".\n";
+            return;
+        }
+    }
+    cout << "NIK tidak ditemukan.\n";
+}
+
 void Admin() {
     string nik;
     char pilihan;
@@ -221,22 +297,22 @@ void Admin() {
         cout << "    MENU ADMIN\n";
         cout << "===================\n";
         cout << "1. Lihat Semua Data Nasabah\n";
-        cout << "2. Buka Status Blokir Nasabah\n";
+        cout << "2. Ubah Status Nasabah\n";
         cout << "3. Cari Nasabah (Implementasi Tree)\n";
         cout << "4. Log out\n";
         cout << "Masukkan pilihan: "; cin >> pilihan;
 
         switch (pilihan) {
             case '1':
-                DisplayAllNasabah(root);
+                DisplayAllNasabah();
                 break;
             case '2':
-                cout << "Fitur buka status blokir nasabah belum tersedia\n";
+                ubahStatusNasabah();
                 break;
             case '3':
                 cout << "Masukkan NIK yang ingin dicari: ";
                 cin >> nik;
-                cariNIKTree(root, nik);
+                cariNIKTree(nik);
                 break;
             case '4':
                 cout << "Log out berhasil\n";
@@ -264,6 +340,23 @@ void login() {
     Node* travel = hashTable[index];
     while (travel != nullptr) {
         if (username == travel->username && pin == travel->PIN) {
+            TreeNode* travelTree = root;
+            while (travelTree != nullptr) {
+            if (travel->NIK == travelTree->NIK) break;
+            if (travel->NIK < travelTree->NIK) travelTree = travelTree->left;
+            else travelTree = travelTree->right;
+    }
+
+            if (travelTree == nullptr) {
+                cout << "Akun tidak ditemukan" << endl << endl;
+                return;
+            }
+
+            if (!travelTree->status) {
+                cout << "Akun dengan NIK " << travelTree->NIK << " sedang diblokir. Silahkan hubungi Admin." << endl;
+                return;
+            }
+
             cout << "Berhasil login sebagai " << travel->username << endl << endl;
             if (username == "admin") {
                 // Fitur admin
@@ -276,7 +369,7 @@ void login() {
         }
         travel = travel->next;
     }
-    cout << "Akun tidak ditemukan" << endl << endl;
+    cout << "Username atau Pin salah" << endl << endl;
 }
 
 void registrasi() {
@@ -382,7 +475,7 @@ void registrasi() {
 
     // semua aman? oke masukin
     insertHash(username, PIN, NIK);
-    root = insertTree(root, NIK, noRekening, SaldoAwal);
+    root = insertTree(NIK, noRekening, SaldoAwal);
     cout << "Registrasi berhasil" << endl;
     cout << "Silakan login untuk melanjutkan" << endl << endl;
 }
@@ -402,11 +495,11 @@ int main(){
     insertHash("naufal", "445566", "555555");
 
     // NIK, No Rekening, Saldo Awal (TREE) 
-    root = insertTree(root, "111111", "1234567890", 1000000.00); // Admin
-    root = insertTree(root, "222222", "0987654321", 500000.00); // adelio
-    root = insertTree(root, "333333", "1122334455", 750000.00); // boy
-    root = insertTree(root, "444444", "5566778899", 300000.00); // rizki
-    root = insertTree(root, "555555", "6677889900", 200000.00); // naufal
+    insertTree("111111", "1234567890", 1000000.00, true); // Admin
+    insertTree("222222", "0987654321", 500000.00, true); // adelio
+    insertTree("333333", "1122334455", 750000.00, true); // boy
+    insertTree("444444", "5566778899", 300000.00, true); // rizki
+    insertTree("555555", "6677889900", 200000.00, true); // naufal
 
     // clear console
     #ifdef _WIN32
