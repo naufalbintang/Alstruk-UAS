@@ -4,9 +4,6 @@
 #include <algorithm> // Karena pin gw malas buat ubah dari string ke int, jadi gw tanya AI dan bisa pake algortihm all_off bakal masalah gasi? - Rizki
 using namespace std;
 
-// Note: Gua sesuain alurnya dengan yang ada di word. - Rizki
-// BINGUNG MAU DI PUSH ATAU KAGAK.
-
 // hash function
 struct Node{
     // Ganti password ke pin, added nik - Rizki
@@ -76,8 +73,6 @@ void insertHash(string username, string pin, string nik){
     }
 }
 
-
-
 TreeNode* insertTree(TreeNode* root, string nik, string norek, double saldo) {
     if (root == nullptr) {
         return bikinNode(nik, norek, saldo);
@@ -87,22 +82,9 @@ TreeNode* insertTree(TreeNode* root, string nik, string norek, double saldo) {
         root->left = insertTree(root->left, nik, norek, saldo);
     else if (nik > root->NIK)
         root->right = insertTree(root->right, nik, norek, saldo);
-    else
-        cout << "NIK " << nik << " sudah ada, data tidak disisipkan ulang.\n";
 
     return root;
 }
-
-TreeNode* CariNIK(TreeNode* root, string nik) {
-    if (root == nullptr || root->NIK == nik) {
-        return root; // ketemu nik / pohon kosong
-    }
-
-    if (nik < root->NIK) 
-        return CariNIK(root->left, nik); // cari di subtree kiri
-    else 
-        return CariNIK(root->right, nik); // cari di subtree kanan
-} 
 
 void inorderTree(TreeNode* root) {
     if (root != nullptr) {
@@ -119,7 +101,7 @@ void inorderTree(TreeNode* root) {
 
 // Cari Node di hashtable berdasarkan NIK
 
-Node* cariNIK(string nik) {
+Node* cariNIKHashTable(string nik) {
     for (int i = 0; i < TABLESIZE; i++) {
         Node* travel = hashTable[i];
         while (travel != nullptr) {
@@ -136,10 +118,10 @@ void MergeDataStructure(TreeNode* root) {
     if (root != nullptr) {
         MergeDataStructure(root->left);
         if (root->NIK != "111111") { // skip admin
-            Node* user = cariNIK(root->NIK); // Akses dari hashtable
-            if (user != nullptr) {
+            Node* user = cariNIKHashTable(root->NIK); // Akses dari hashtable
+            if (user != nullptr && user->username != "admin") {
                 cout << "Username    : " << user->username << endl;
-                cout << "PIN         : " << user->PIN << endl;
+                cout << "PIN         : " << string(user->PIN.length(), '*') << endl;
             } else {
                 cout << "[WARNING] Data pengguna dengan NIK " << root->NIK << " tidak ditemukan di Hash Table.\n";
             }
@@ -162,6 +144,45 @@ void DisplayAllNasabah(TreeNode* root) {
     MergeDataStructure(root);
     cout << endl;
 }
+
+// Cari NIK di Tree buat fitur di Admin
+void cariNIKTree(TreeNode* root, string nik) {
+    if (nik == "111111") {
+        cout << "Data dengan NIK " << nik << " tidak ditemukan.\n";
+        return;
+    }
+
+    if (root == nullptr) {
+        cout << "Tree kosong.\n";
+        return;
+    }
+
+    while (root != nullptr) {
+        if (nik < root->NIK) {
+            root = root-> left;
+        } else if (nik > root->NIK) {
+            root = root-> right;
+        } else {
+            Node* user = cariNIKHashTable(root->NIK);
+            
+            if (user != nullptr) {
+                cout << "\n=== Data Ditemukan ===\n";
+                cout << "Username       : " << user->username << endl;
+                cout << "PIN            : " << string(user->PIN.length(), '*') << endl;
+                cout << "NIK            : " << root->NIK << endl;
+                cout << "Nomor Rekening : " << root->noRekening << endl;
+                cout << fixed << setprecision(2);
+                cout << "Saldo          : Rp " << root->SaldoAwal << endl;
+                cout << "========================\n\n";
+            } else {
+                cout << "Data dengan NIK " << nik << " tidak ditemukan.\n";
+            }
+            return;
+        }
+    }
+    cout << "Data dengan NIK " << nik << " tidak ditemukan.\n\n";
+}
+
 
 void printHashAndTree(TreeNode* root) {
     cout << endl;
@@ -215,7 +236,7 @@ void Admin() {
             case '3':
                 cout << "Masukkan NIK yang ingin dicari: ";
                 cin >> nik;
-                cout << "Fitur pencarian nasabah belum tersedia\n";
+                cariNIKTree(root, nik);
                 break;
             case '4':
                 cout << "Log out berhasil\n";
@@ -291,8 +312,6 @@ void registrasi() {
         }
     }
 
-    //ab
-
     // pin valid?
     while (true) {
         cout << "Masukkan Pin (6 digit): ";
@@ -329,8 +348,41 @@ void registrasi() {
         }
     }
 
+    // norek valid?
+    while (true) {
+        cout << "Masukkan No Rekening: ";
+        cin >> noRekening;
+
+        bool norekdahada = false;
+        TreeNode* cek = root;
+        while (cek != nullptr) {
+            if (noRekening == cek->noRekening) {
+                norekdahada = true;
+                break;
+            } 
+            if (noRekening < cek->noRekening) {
+                cek = cek->left;
+            } else {
+                cek = cek->right;
+            }
+        }
+        if (norekdahada) {
+            cout << "No Rekening sudah terdaftar, silahkan ganti No Rekening lain" << endl;
+        } else {
+            break; 
+        }
+    }
+
+    // saldo valid?
+    cout << "Masukkan Saldo: ";
+    while (!(cin >> SaldoAwal) || SaldoAwal < 0) {
+        cout << "Input tidak valid, silahkan masukkan angka >= 0: ";
+        cin.clear();
+    }
+
     // semua aman? oke masukin
     insertHash(username, PIN, NIK);
+    root = insertTree(root, NIK, noRekening, SaldoAwal);
     cout << "Registrasi berhasil" << endl;
     cout << "Silakan login untuk melanjutkan" << endl << endl;
 }
@@ -344,11 +396,17 @@ int main(){
     // Hardcoded data (REMINDER: DATA NIK DI HASHTABLE DAN TREE HARUS SAMA  - Rizki)
     // Username, PIN, NIK (HASHTABLE)
     insertHash("admin", "234567", "111111");
-    insertHash("nasabah", "123456", "222222");
+    insertHash("adelio", "123456", "222222");
+    insertHash("boy", "098765", "333333");
+    insertHash("rizki", "112233", "444444");
+    insertHash("naufal", "445566", "555555");
 
     // NIK, No Rekening, Saldo Awal (TREE) 
     root = insertTree(root, "111111", "1234567890", 1000000.00); // Admin
-    root = insertTree(root, "222222", "0987654321", 500000.00); // Nasabah
+    root = insertTree(root, "222222", "0987654321", 500000.00); // adelio
+    root = insertTree(root, "333333", "1122334455", 750000.00); // boy
+    root = insertTree(root, "444444", "5566778899", 300000.00); // rizki
+    root = insertTree(root, "555555", "6677889900", 200000.00); // naufal
 
     // clear console
     #ifdef _WIN32
