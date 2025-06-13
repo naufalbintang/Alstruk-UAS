@@ -13,16 +13,12 @@ struct Node{
     string username{};
     string PIN{}; 
     string NIK{};
-    string noRekening{};
-    double SaldoAwal{};
     Node* next;
 
-    Node(string usn, string pin, string nik, string norek, double saldo ){
+    Node(string usn, string pin, string nik){
         username = usn;
         PIN = pin;
         NIK = nik;
-        noRekening = norek;
-        SaldoAwal = saldo;
         next = nullptr;
     }
 };
@@ -72,14 +68,6 @@ TreeNode* CariNIK(TreeNode* root, string nik) {
         return CariNIK(root->right, nik); // cari di subtree kanan
 } 
 
-void deleteTree(TreeNode* root) {
-    if (root != nullptr) {
-        deleteTree(root->left);
-        deleteTree(root->right);
-        delete root;
-    }
-}
-
 void inorder(TreeNode* root) {
     if (root != nullptr) {
         inorder(root->left);
@@ -108,30 +96,10 @@ int hashFunction(string username) {
     return hash;
 }
 
-void insertHash(string username, string pin, string nik, string norek, double saldo){
+void insertHash(string username, string pin, string nik){
 
     int index = hashFunction(username);
-    Node* newNode = new Node(username, pin, nik, norek, saldo);
-
-    // I assume this function is used to check if account already exists? Right Nopal? - Rizki
-    
-    // Moved this function to registrasi so it check for existing accounts AFTER user input any duplications. So NOT AFTER inputting everything. - Rizki
-
-    // for(int i{}; i < TABLESIZE; i++){
-    //     Node* travel = hashTable[i];
-    //     while(travel != nullptr){
-    //         if(username == travel->username){
-    //             cout << "Username sudah terdaftar" << endl;
-    //             return;
-    //         }
-    //         // Cek nik juga atau ini ga perlu? Hmm. Hapus aja kalau ga perlu - Rizki
-    //         if(nik == travel->NIK){
-    //             cout << "NIK sudah terdaftar" << endl;
-    //             return;
-    //         }
-    //         travel = travel->next;
-    //     }
-    // }
+    Node* newNode = new Node(username, pin, nik);
 
     // Insert node ke hash table bukan? - Rizki
     if(hashTable[index] == nullptr){
@@ -160,9 +128,6 @@ void DataNasabah(){
                 ketemu = true;
                 cout << "Username       : " << travel->username << endl;
                 cout << "NIK            : " << travel->NIK << endl;
-                cout << "No Rekening    : " << travel->noRekening << endl;
-                cout << "Saldo          : " << fixed << setprecision(0) << travel->SaldoAwal << endl;
-                cout << "Status         : " << (travel->SaldoAwal >= 0 ? "Aktif" : "Blokir") << endl << endl; // Hmm. Karena blom ada fitur status trus gw malas implementasi, gw asumsikan kalau saldo >= 0 itu aktif, kalau < 0 itu blokir. - Rizki
             }
             travel = travel->next;
         }
@@ -182,8 +147,7 @@ void printHash() {
              cout << 
              "(" << travel->username << ", " 
              << travel->PIN  << ", " 
-             << travel->NIK << ", " << travel->noRekening << ", " 
-             << fixed << setprecision(0) << travel->SaldoAwal << ") -> "; 
+             << travel->NIK << ", "; 
             travel = travel->next;
         }
         cout << "nullptr" << endl;
@@ -330,40 +294,8 @@ void registrasi() {
         }
     }
 
-    // norek valid?
-    while (true) {
-        cout << "Masukkan No Rekening: ";
-        cin >> noRekening;
-
-        bool norekdahada = false;
-        for (int i = 0; i < TABLESIZE; i++) {
-            Node* travel = hashTable[i];
-            while (travel != nullptr) {
-                if (noRekening == travel->noRekening) {
-                    norekdahada = true;
-                    break;
-                }
-                travel = travel->next;
-            }
-            if (norekdahada) break;
-        }
-
-        if (norekdahada) {
-            cout << "No Rekening sudah terdaftar, silahkan ganti No Rekening lain" << endl;
-        } else {
-            break;
-        }
-    }
-
-    // saldo valid?
-    cout << "Masukkan Saldo: ";
-    while (!(cin >> SaldoAwal) || SaldoAwal < 0) {
-        cout << "Input tidak valid, silahkan masukkan angka >= 0: ";
-        cin.clear();
-    }
-
     // semua aman? oke masukin
-    insertHash(username, PIN, NIK, noRekening, SaldoAwal);
+    insertHash(username, PIN, NIK);
     cout << "Registrasi berhasil" << endl;
     cout << "Silakan login untuk melanjutkan" << endl << endl;
 }
@@ -376,8 +308,8 @@ int main(){
 
     // Hardcoded data
     // Username, PIN, NIK, No Rekening, saldo awal
-    insertHash("admin", "234567", "1234567890123456", "0000000000", 1000000);
-    insertHash("nasabah", "123456", "222222", "222222222", 500000);
+    insertHash("admin", "234567", "111111");
+    insertHash("nasabah", "123456", "222222");
 
     // clear console
     #ifdef _WIN32
