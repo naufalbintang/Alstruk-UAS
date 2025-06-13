@@ -29,22 +29,67 @@ struct Node{
 
 // Implementasi TREE YAY ANJ-
 struct TreeNode {
-    string username;
-    string PIN;
     string NIK;
     string noRekening;
     double SaldoAwal;
-    TreeNode* left = nullptr;
-    TreeNode* right = nullptr;
-
-    TreeNode(Node* node) {
-        username = node->username;
-        PIN = node->PIN;
-        NIK = node->NIK;
-        noRekening = node->noRekening;
-        SaldoAwal = node->SaldoAwal;
-    }
+    TreeNode* left;
+    TreeNode* right;
 };
+
+TreeNode* bikinNode(string nik, string norek, double saldo) {
+    TreeNode* nodeBaru = new TreeNode;
+    nodeBaru->NIK = nik;
+    nodeBaru->noRekening = norek;
+    nodeBaru->SaldoAwal = saldo;
+    nodeBaru->left = nullptr;
+    nodeBaru->right = nullptr;
+    return nodeBaru;
+}
+
+TreeNode* insertTree(TreeNode* root, string nik, string norek, double saldo) {
+    if (root = nullptr) {
+        return bikinNode(nik, norek, saldo);
+    }
+
+    if (nik < root->NIK)
+        root->left = insertTree(root->left, nik, norek, saldo);
+    else if (nik > root->NIK)
+        root->right = insertTree(root->right, nik, norek, saldo);
+    else
+        cout << "NIK " << nik << " sudah ada, data tidak disisipkan ulang.\n";
+
+    return root;
+}
+
+TreeNode* CariNIK(TreeNode* root, string nik) {
+    if (root == nullptr || root->NIK == nik) {
+        return root; // ketemu nik / pohon kosong
+    }
+
+    if (nik < root->NIK) 
+        return CariNIK(root->left, nik); // cari di subtree kiri
+    else 
+        return CariNIK(root->right, nik); // cari di subtree kanan
+} 
+
+void deleteTree(TreeNode* root) {
+    if (root != nullptr) {
+        deleteTree(root->left);
+        deleteTree(root->right);
+        delete root;
+    }
+}
+
+void inorder(TreeNode* root) {
+    if (root != nullptr) {
+        inorder(root->left);
+        cout << "NIK: " << root->NIK
+             << ", No Rekening: " << root->noRekening
+             << ", Saldo Awal: " << root->SaldoAwal << endl;
+        inorder(root->right);
+    }
+}
+
 
 // Hmm, OH ini buat ukuran hash table-nya ya? - Rizki
 const int TABLESIZE = 10;
@@ -95,34 +140,6 @@ void insertHash(string username, string pin, string nik, string norek, double sa
         newNode->next = hashTable[index];
         hashTable[index] = newNode;
     }
-}
-
-TreeNode* cariNIKdiHashTable(string NIK, Node* hashTable[], int TABLESIZE) {
-    for (int i = 0; i < TABLESIZE; i++) {
-        Node* travel = hashTable[i];
-        while (travel != nullptr) {
-            if (travel->NIK == NIK) {
-                return new TreeNode(travel); // ketemu, bungkus jadi TreeNode buat ditampilkan
-            }
-            travel = travel->next;
-        }
-    }
-    return nullptr; // NIK tidak ditemukan
-}
-
-void TampilkanNode(TreeNode* node) {
-    if (node == nullptr) {
-        cout << "Data dengan NIK tersebut tidak ditemukan.\n";
-        return;
-    }
-
-    cout << "\n=== Data Ditemukan ===\n";
-    cout << "Username     : " << node->username << endl;
-    cout << "PIN          : " << node->PIN << endl;
-    cout << "NIK          : " << node->NIK << endl;
-    cout << "No Rekening  : " << node->noRekening << endl;
-    cout << "Saldo        : " << fixed << setprecision(0) << node->SaldoAwal << endl;
-    cout << "Status       : " << (node->SaldoAwal >= 0 ? "Aktif" : "Blokir") << endl << endl; // Hmm. Karena blom ada fitur status trus gw malas implementasi, gw asumsikan kalau saldo >= 0 itu aktif, kalau < 0 itu blokir. - Rizki
 }
 
 // Added this for admin, so it only display nasabah data, not admin - Rizki
@@ -199,7 +216,7 @@ void Admin() {
             case '3':
                 cout << "Masukkan NIK yang ingin dicari: ";
                 cin >> nik;
-                TampilkanNode(cariNIKdiHashTable(nik, hashTable, TABLESIZE));
+                cout << "Fitur pencarian nasabah belum tersedia\n";
                 break;
             case '4':
                 cout << "Log out berhasil\n";
@@ -357,6 +374,8 @@ int main(){
     char pilihan;
     bool exit = false;
 
+    // Hardcoded data
+    // Username, PIN, NIK, No Rekening, saldo awal
     insertHash("admin", "234567", "1234567890123456", "0000000000", 1000000);
     insertHash("nasabah", "123456", "222222", "222222222", 500000);
 
