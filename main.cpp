@@ -9,7 +9,7 @@ using namespace std;
 
 // hash function
 struct Node{
-    // Ganti password ke pin, added nik, norekening, saldo - Rizki
+    // Ganti password ke pin, added nik - Rizki
     string username{};
     string PIN{}; 
     string NIK{};
@@ -32,6 +32,7 @@ struct TreeNode {
     TreeNode* right;
 };
 
+
 TreeNode* bikinNode(string nik, string norek, double saldo) {
     TreeNode* nodeBaru = new TreeNode;
     nodeBaru->NIK = nik;
@@ -42,46 +43,11 @@ TreeNode* bikinNode(string nik, string norek, double saldo) {
     return nodeBaru;
 }
 
-TreeNode* insertTree(TreeNode* root, string nik, string norek, double saldo) {
-    if (root = nullptr) {
-        return bikinNode(nik, norek, saldo);
-    }
-
-    if (nik < root->NIK)
-        root->left = insertTree(root->left, nik, norek, saldo);
-    else if (nik > root->NIK)
-        root->right = insertTree(root->right, nik, norek, saldo);
-    else
-        cout << "NIK " << nik << " sudah ada, data tidak disisipkan ulang.\n";
-
-    return root;
-}
-
-TreeNode* CariNIK(TreeNode* root, string nik) {
-    if (root == nullptr || root->NIK == nik) {
-        return root; // ketemu nik / pohon kosong
-    }
-
-    if (nik < root->NIK) 
-        return CariNIK(root->left, nik); // cari di subtree kiri
-    else 
-        return CariNIK(root->right, nik); // cari di subtree kanan
-} 
-
-void inorder(TreeNode* root) {
-    if (root != nullptr) {
-        inorder(root->left);
-        cout << "NIK: " << root->NIK
-             << ", No Rekening: " << root->noRekening
-             << ", Saldo Awal: " << root->SaldoAwal << endl;
-        inorder(root->right);
-    }
-}
-
 
 // Hmm, OH ini buat ukuran hash table-nya ya? - Rizki
 const int TABLESIZE = 10;
 Node* hashTable[TABLESIZE] = {};
+TreeNode* root = nullptr;
 
 // int hashFuction(string username){
 //     return tolower(username[0]) % TABLESIZE;
@@ -110,35 +76,97 @@ void insertHash(string username, string pin, string nik){
     }
 }
 
-// Added this for admin, so it only display nasabah data, not admin - Rizki
-void DataNasabah(){
-    cout << endl;
 
-    cout << "===================" << endl;  
-    cout << "  DATA NASABAH" << endl;
-    cout << "===================" << endl;
 
-    cout << endl;
-    bool ketemu = false;
+TreeNode* insertTree(TreeNode* root, string nik, string norek, double saldo) {
+    if (root == nullptr) {
+        return bikinNode(nik, norek, saldo);
+    }
+
+    if (nik < root->NIK)
+        root->left = insertTree(root->left, nik, norek, saldo);
+    else if (nik > root->NIK)
+        root->right = insertTree(root->right, nik, norek, saldo);
+    else
+        cout << "NIK " << nik << " sudah ada, data tidak disisipkan ulang.\n";
+
+    return root;
+}
+
+TreeNode* CariNIK(TreeNode* root, string nik) {
+    if (root == nullptr || root->NIK == nik) {
+        return root; // ketemu nik / pohon kosong
+    }
+
+    if (nik < root->NIK) 
+        return CariNIK(root->left, nik); // cari di subtree kiri
+    else 
+        return CariNIK(root->right, nik); // cari di subtree kanan
+} 
+
+void inorderTree(TreeNode* root) {
+    if (root != nullptr) {
+        inorderTree(root->left);
+        cout << "  NIK         : " << root->NIK << endl;
+        cout << "  Rekening    : " << root->noRekening << endl;
+        cout << "  Saldo Awal  : Rp " << fixed << setprecision(2) << root->SaldoAwal << endl;
+        cout << "-----------------------------" << endl;
+        inorderTree(root->right);
+    }
+}
+
+// NGEMERGE DISPLAY OUTPUT HASHTABLE DAN TREE
+
+// Cari Node di hashtable berdasarkan NIK
+
+Node* cariNIK(string nik) {
     for (int i = 0; i < TABLESIZE; i++) {
         Node* travel = hashTable[i];
         while (travel != nullptr) {
-            // Lewati jika admin 
-            if (travel->username != "admin") {
-                ketemu = true;
-                cout << "Username       : " << travel->username << endl;
-                cout << "NIK            : " << travel->NIK << endl;
+            if (travel -> NIK == nik && travel -> username != "admin") {
+                return travel;
             }
             travel = travel->next;
         }
     }
-    if (!ketemu) {
-        cout << "Tidak ada nasabah yang terdaftar.\n";
+    return nullptr;
+}
+
+void MergeDataStructure(TreeNode* root) {
+    if (root != nullptr) {
+        MergeDataStructure(root->left);
+        if (root->NIK != "111111") { // skip admin
+            Node* user = cariNIK(root->NIK); // Akses dari hashtable
+            if (user != nullptr) {
+                cout << "Username    : " << user->username << endl;
+                cout << "PIN         : " << user->PIN << endl;
+            } else {
+                cout << "[WARNING] Data pengguna dengan NIK " << root->NIK << " tidak ditemukan di Hash Table.\n";
+            }
+
+            cout << "NIK         : " << root->NIK << endl;
+            cout << "No Rekening : " << root->noRekening << endl;
+            cout << "Saldo Awal  : " << fixed << setprecision(2) << root->SaldoAwal << endl;
+            cout << "-------------------" << endl;
+        }
+
+        MergeDataStructure(root->right);
     }
 }
 
-void printHash() {
+void DisplayAllNasabah(TreeNode* root) {
     cout << endl;
+    cout << "===================" << endl;
+    cout << "  DATA NASABAH" << endl;
+    cout << "===================" << endl;
+    MergeDataStructure(root);
+    cout << endl;
+}
+
+void printHashAndTree(TreeNode* root) {
+    cout << endl;
+
+    cout << "\n======= HASH TABLE =======\n";
     for(int i{}; i < TABLESIZE; i++){
         cout << "[" << i << "]";
         Node* travel = hashTable[i];
@@ -152,7 +180,14 @@ void printHash() {
         }
         cout << "nullptr" << endl;
     }
-    cout << endl;
+    
+    cout << "\n======= BINARY SEARCH TREE (Data Rekening) =======\n";
+    if (root == nullptr) {
+        cout << "Pohon kosong.\n";
+    } else {
+        inorderTree(root);
+        cout << endl;
+    }
 }
 
 void Admin() {
@@ -172,7 +207,7 @@ void Admin() {
 
         switch (pilihan) {
             case '1':
-                DataNasabah();
+                DisplayAllNasabah(root);
                 break;
             case '2':
                 cout << "Fitur buka status blokir nasabah belum tersedia\n";
@@ -306,10 +341,14 @@ int main(){
     char pilihan;
     bool exit = false;
 
-    // Hardcoded data
-    // Username, PIN, NIK, No Rekening, saldo awal
+    // Hardcoded data (REMINDER: DATA NIK DI HASHTABLE DAN TREE HARUS SAMA  - Rizki)
+    // Username, PIN, NIK (HASHTABLE)
     insertHash("admin", "234567", "111111");
     insertHash("nasabah", "123456", "222222");
+
+    // NIK, No Rekening, Saldo Awal (TREE) 
+    root = insertTree(root, "111111", "1234567890", 1000000.00); // Admin
+    root = insertTree(root, "222222", "0987654321", 500000.00); // Nasabah
 
     // clear console
     #ifdef _WIN32
@@ -326,7 +365,7 @@ int main(){
         cout << "============" << endl;
         cout << "1. Login" << endl;
         cout << "2. Register" << endl;
-        cout << "3. Print Hash Table" << endl;
+        cout << "3. Print Data HashTable and Tree" << endl;
         cout << "0. Keluar" << endl;
         cout << "Masukkan pilihan: "; cin >> pilihan;
         switch(pilihan){
@@ -341,7 +380,7 @@ int main(){
             registrasi();
             break;
         case '3':
-            printHash();
+            printHashAndTree(root);
             break;
         default:
             cout << "Input tidak valid" << endl;
