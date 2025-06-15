@@ -1,541 +1,527 @@
 #include <iostream>
 #include <string>
-#include <iomanip> // Biar saldoawal ga 1+e06 di output kalau 1 juta. - Rizki
-#include <algorithm> // Karena pin gw malas buat ubah dari string ke int, jadi gw tanya AI dan bisa pake algortihm all_off bakal masalah gasi? - Rizki
+#include <vector>
+#include <iomanip>
+#include <random>
+#include <sstream>
+#include <algorithm>
+
+// Menggunakan namespace std agar tidak perlu menulis std:: berulang kali
 using namespace std;
 
-// hash function
-struct Node{
-    // Ganti password ke pin, added nik - Rizki
-    string username{};
-    string PIN{}; 
-    string NIK{};
-    Node* next;
+// Forward declarations untuk class yang saling bergantung
+class Hash;
+class BinaryTreeNasabah;
 
-    Node(string usn, string pin, string nik){
-        username = usn;
-        PIN = pin;
-        NIK = nik;
-        next = nullptr;
-    }
+// =================================================================
+// == BAGIAN 1: DEFINISI MODEL (Struktur Data Dasar)
+// =================================================================
+
+// Model untuk merepresentasikan akun pengguna untuk otentikasi
+struct Akun {
+    string username;
+    string pin;
+    string nik;
+    string IdNasabah; // Kunci penghubung ke data Nasabah
+
+    // Konstruktor default
+    Akun() = default;
+
+    // Konstruktor dengan parameter
+    Akun(string username, string pin, string nik, string IdNasabah)
+        : username(username), pin(pin), nik(nik), IdNasabah(IdNasabah) {}
 };
 
-// Implementasi TREE YAY ANJ-
-struct TreeNode {
-    string NIK;
-    string noRekening;
-    double SaldoAwal;
-    bool status;
-    TreeNode* left;
-    TreeNode* right;
+// Model untuk merepresentasikan data nasabah yang lebih detail
+struct Nasabah {
+    string IdNasabah;
+    string nik;
+    double saldo;
+    string NoRekening;
+    bool aktif;
+
+    // Konstruktor default
+    Nasabah() = default;
+
+    // Konstruktor dengan parameter
+    Nasabah(string IdNasabah, string nik, double saldo, string NoRekening, bool aktif = true)
+        : IdNasabah(IdNasabah), nik(nik), saldo(saldo), NoRekening(NoRekening), aktif(aktif) {}
 };
 
 
-TreeNode* bikinNode(string nik, string norek, double saldo, bool status = true) {
-    TreeNode* nodeBaru = new TreeNode;
-    nodeBaru->NIK = nik;
-    nodeBaru->noRekening = norek;
-    nodeBaru->SaldoAwal = saldo;
-    nodeBaru->status = status;
-    nodeBaru->left = nullptr;
-    nodeBaru->right = nullptr;
-    return nodeBaru;
+// =================================================================
+// == BAGIAN 2: FUNGSI UTILITAS (Fungsi Bantuan)
+// =================================================================
+
+// Penghitung global untuk memastikan ID Nasabah unik
+int globalNasabahCounter = 1;
+
+/**
+ * @brief Menghasilkan ID Nasabah yang unik dan berurutan.
+ * Format: "NSB" diikuti 3 digit angka (e.g., "NSB001").
+ * @return string ID Nasabah baru.
+ */
+string generateIdNasabah() {
+    stringstream ss;
+    ss << "NSB" << setw(3) << setfill('0') << globalNasabahCounter++;
+    return ss.str();
+}
+
+/**
+ * @brief Menghasilkan Nomor Rekening 8 digit secara acak.
+ * @return string Nomor Rekening baru.
+ */
+string generateNoRekening() {
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(10000000, 99999999);
+    return to_string(dis(gen));
 }
 
 
-// Hmm, OH ini buat ukuran hash table-nya ya? - Rizki
-const int TABLESIZE = 10;
-Node* hashTable[TABLESIZE] = {};
-TreeNode* root = nullptr;
+// =================================================================
+// == BAGIAN 3: STRUKTUR DATA (Hash Table & Binary Tree)
+// =================================================================
 
-// int hashFuction(string username){
-//     return tolower(username[0]) % TABLESIZE;
-// }
+// --- IMPLEMENTASI HASH TABLE ---
+class Hash {
+private:
+    // Node untuk linked list (mengatasi kolisi)
+    struct Node {
+        string username{};
+        string pin{};
+        string nik{};
+        string IdNasabah{};
+        Node* next{};
 
-// Improved i guess - Rizki
-int hashFunction(string username) {
-    int hash = 0;
-    for (int i = 0; i < username.length(); i++) {
-        hash = (hash * 31 + username[i]) % TABLESIZE;
-    }
-    return hash;
-}
-
-void insertHash(string username, string pin, string nik){
-
-    int index = hashFunction(username);
-    Node* newNode = new Node(username, pin, nik);
-
-    // Insert node ke hash table bukan? - Rizki
-    if(hashTable[index] == nullptr){
-        hashTable[index] = newNode;
-    }else{
-        newNode->next = hashTable[index];
-        hashTable[index] = newNode;
-    }
-}
-
-TreeNode* insertTree(string nik, string norek, double saldo, bool status = true) {
-    TreeNode* baru = bikinNode(nik, norek, saldo, status);
-
-    if (root == nullptr) {
-        root = baru;
-        return root;
-    }
-
-    TreeNode* travelTree = root;
-    TreeNode* parent = nullptr;
-
-    while (travelTree != nullptr) {
-        parent = travelTree;
-        if (nik < travelTree->NIK) {
-            travelTree = travelTree->left;
-        } else if (nik > travelTree->NIK) {
-            travelTree = travelTree->right;
-        } else {
-            cout << "NIK sudah ada. Data tidak disisipkan.\n";
-            return root;
+        Node(string username, string pin, string nik, string IdNasabah) {
+            this->username = username;
+            this->nik = nik;
+            this->pin = pin;
+            this->IdNasabah = IdNasabah;
         }
-    }
-
-    if (nik < parent->NIK) {
-        parent->left = baru;
-    } else {
-        parent->right = baru;
-    }
-
-    return root;
-}
-
-void inorderTree(TreeNode* root) {
-    if (root != nullptr) {
-        inorderTree(root->left);
-        cout << "  NIK         : " << root->NIK << endl;
-        cout << "  Rekening    : " << root->noRekening << endl;
-        cout << "  Saldo Awal  : Rp " << fixed << setprecision(2) << root->SaldoAwal << endl;
-        cout << "  Status      : " << (root->status ? "AKTIF" : "BLOKIR") << endl;
-        cout << "-----------------------------" << endl;
-        inorderTree(root->right);
-    }
-}
-
-// NGEMERGE DISPLAY OUTPUT HASHTABLE DAN TREE
-
-// Cari Node di hashtable berdasarkan NIK
-
-Node* cariNIKHashTable(string nik) {
-    for (int i = 0; i < TABLESIZE; i++) {
-        Node* travel = hashTable[i];
-        while (travel != nullptr) {
-            if (travel -> NIK == nik && travel -> username != "admin") {
-                return travel;
-            }
-            travel = travel->next;
-        }
-    }
-    return nullptr;
-}
-
-void MergeDataStructure(TreeNode* root) {
-    if (root != nullptr) {
-        MergeDataStructure(root->left);
-        if (root->NIK != "111111") { // skip admin
-            Node* user = cariNIKHashTable(root->NIK); // Akses dari hashtable
-            if (user != nullptr && user->username != "admin") {
-                cout << "Username    : " << user->username << endl;
-                cout << "PIN         : " << string(user->PIN.length(), '*') << endl;
-            } else {
-                cout << "[WARNING] Data pengguna dengan NIK " << root->NIK << " tidak ditemukan di Hash Table.\n";
-            }
-
-            cout << "NIK         : " << root->NIK << endl;
-            cout << "No Rekening : " << root->noRekening << endl;
-            cout << "Saldo Awal  : " << fixed << setprecision(2) << root->SaldoAwal << endl;
-            cout << "Status      : " << (root->status ? "AKTIF" : "BLOKIR") << endl;
-            cout << "-------------------" << endl;
-        }
-
-        MergeDataStructure(root->right);
-    }
-}
-
-void DisplayAllNasabah() {
-    cout << endl;
-    cout << "===================" << endl;
-    cout << "  DATA NASABAH" << endl;
-    cout << "===================" << endl;
-    MergeDataStructure(root);
-    cout << endl;
-}
-
-// Cari NIK di Tree buat fitur di Admin
-void cariNIKTree(string nik) {
-    if (nik == "111111") {
-        cout << "Data dengan NIK " << nik << " tidak ditemukan.\n";
-        return;
-    }
-    if (root == nullptr) {
-        cout << "Tree kosong.\n";
-        return;
-    }
-    TreeNode* travelTree = root; // GUNAKAN POINTER LOKAL
-    while (travelTree != nullptr) {
-        if (nik < travelTree->NIK) {
-            travelTree = travelTree->left;
-        } else if (nik > travelTree->NIK) {
-            travelTree = travelTree->right;
-        } else {
-            Node* user = cariNIKHashTable(travelTree->NIK);
-            if (user != nullptr) {
-                cout << "\n=== Data Ditemukan ===\n";
-                cout << "Username       : " << user->username << endl;
-                cout << "PIN            : " << string(user->PIN.length(), '*') << endl;
-                cout << "NIK            : " << travelTree->NIK << endl;
-                cout << "Nomor Rekening : " << travelTree->noRekening << endl;
-                cout << fixed << setprecision(2);
-                cout << "Saldo          : Rp " << travelTree->SaldoAwal << endl;
-                cout << "Status         : " << (travelTree->status ? "AKTIF" : "BLOKIR") << endl;
-                cout << "========================\n\n";
-            } else {
-                cout << "Data dengan NIK " << nik << " tidak ditemukan.\n";
-            }
-            return;
-        }
-    }
-    cout << "Data dengan NIK " << nik << " tidak ditemukan.\n\n";
-}
-
-
-void printHashAndTree(TreeNode* root) {
-    cout << endl;
-
-    cout << "\n======= HASH TABLE =======\n";
-    for(int i{}; i < TABLESIZE; i++){
-        cout << "[" << i << "]";
-        Node* travel = hashTable[i];
-        while (travel != nullptr) {
-            // Added some of the data to be outputted - Rizki
-             cout << 
-             "(" << travel->username << ", " 
-             << travel->PIN  << ", " 
-             << travel->NIK << ", "; 
-            travel = travel->next;
-        }
-        cout << "nullptr" << endl;
-    }
+    };
     
-    cout << "\n======= BINARY SEARCH TREE (Data Rekening) =======\n";
-    if (root == nullptr) {
-        cout << "Pohon kosong.\n";
-    } else {
-        inorderTree(root);
-        cout << endl;
-    }
-}
+    // Ukuran tabel hash, diset ke 10 untuk contoh ini
+    static const int TABLE_SIZE = 10;
+    Node* hashTable[TABLE_SIZE]{};
 
-void ubahStatusNasabah() {
-    if (root == nullptr) {
-        cout << "Pohon kosong. Tidak ada nasabah yang dapat diubah statusnya.\n";
-        return;
-    }
-
-    string nik;
-    char pilihan;
-
-    cout << "=== Ubah Status Nasabah ===\n";
-    cout << "1. Blokir Nasabah\n";
-    cout << "2. Buka Blokir Nasabah\n";
-    cout << "0. kembali ke menu admin\n";
-    cout << "Pilihan: "; 
-    cin >> pilihan;
-    if (pilihan == '0') return;
-    if (pilihan != '1' && pilihan != '2') {
-        cout << "Pilihan tidak valid.\n";
-        return;
+    /**
+     * @brief Fungsi hash sederhana, menjumlahkan nilai ASCII dari username.
+     * @param username Username yang akan di-hash.
+     * @return int Indeks dalam hash table.
+     */
+    int hashFunction(string username) {
+        int usernameASCII{};
+        for (char c : username) {
+            usernameASCII += c;
+        }
+        return usernameASCII % TABLE_SIZE;
     }
 
-    cout << "Masukkan NIK Nasabah: ";
-    cin >> nik;
-
-    bool statusBaru;
-
-    if (nik == "111111") {
-        cout << "Tidak dapat mengubah status admin.\n";
-        return;
+public:
+    // Destruktor untuk membersihkan memori yang dialokasikan
+    ~Hash() {
+        for (int i = 0; i < TABLE_SIZE; ++i) {
+            Node* entry = hashTable[i];
+            while (entry != nullptr) {
+                Node* prev = entry;
+                entry = entry->next;
+                delete prev;
+            }
+        }
     }
 
-    if (pilihan == '1') statusBaru = false;
-    else if (pilihan == '2') statusBaru = true;
-    else {
-        cout << "pilihan tidak valid.\n";
-        return;
-    }
-
-    TreeNode* travelTree = root;
-    while (travelTree != nullptr) {
-        if (nik < travelTree->NIK) {
-            travelTree = travelTree->left;
-        } else if (nik > travelTree->NIK) {
-            travelTree = travelTree->right; 
+    /**
+     * @brief Menyisipkan data ke dalam hash table.
+     */
+    void insertHash(string username, string pin, string nik, string IdNasabah) {
+        int hashCode = hashFunction(username);
+        Node* newNode = new Node(username, pin, nik, IdNasabah);
+        
+        if (hashTable[hashCode] == nullptr) {
+            hashTable[hashCode] = newNode;
         } else {
-            travelTree->status = statusBaru;
-            cout << "Status nasabah dengan NIK " << nik << " telah diubah menjadi "
-                 << (statusBaru ? "AKTIF" : "BLOKIR") << ".\n";
-            return;
+            Node* travel = hashTable[hashCode];
+            while (travel->next != nullptr) {
+                travel = travel->next;
+            }
+            travel->next = newNode;
         }
     }
-    cout << "NIK tidak ditemukan.\n";
-}
 
-void Admin() {
-    string nik;
-    char pilihan;
-    bool exit = false;
+    /**
+     * @brief Helper untuk menyisipkan objek Akun.
+     */
+    void insertAkun(const Akun& akun) {
+        insertHash(akun.username, akun.pin, akun.nik, akun.IdNasabah);
+    }
 
-    while (!exit) {
-        cout << "===================\n";
-        cout << "    MENU ADMIN\n";
-        cout << "===================\n";
-        cout << "1. Lihat Semua Data Nasabah\n";
-        cout << "2. Ubah Status Nasabah\n";
-        cout << "3. Cari Nasabah (Implementasi Tree)\n";
-        cout << "4. Log out\n";
-        cout << "Masukkan pilihan: "; cin >> pilihan;
-
-        switch (pilihan) {
-            case '1':
-                DisplayAllNasabah();
-                break;
-            case '2':
-                ubahStatusNasabah();
-                break;
-            case '3':
-                cout << "Masukkan NIK yang ingin dicari: ";
-                cin >> nik;
-                cariNIKTree(nik);
-                break;
-            case '4':
-                cout << "Log out berhasil\n";
-                exit = true;
-                break;
-            default:
-                cout << "Pilihan tidak valid.\n";
-                break;
+    /**
+     * @brief Mencari node berdasarkan username dan pin untuk login.
+     * @return true jika ditemukan, false jika tidak.
+     */
+    bool isNodeFound(const string& username, const string& pin) {
+        int hashCode = hashFunction(username);
+        Node* travel = hashTable[hashCode];
+        while (travel != nullptr) {
+            if (username == travel->username && pin == travel->pin) {
+                return true;
+            }
+            travel = travel->next;
         }
-    }
-}
-
-void Nasabah() {
-    cout << "Fitur nasabah belum tersedia" << endl;
-    // Implementasi fitur nasabah di sini
-}
-
-void login() {
-    string username, pin;
-    cout << "Masukkan username: "; cin >> username;
-    cout << "Masukkan pin: "; cin >> pin;
-
-    // Simplified the login function - Rizki
-    int index = hashFunction(username);
-    Node* travel = hashTable[index];
-    while (travel != nullptr) {
-        if (username == travel->username && pin == travel->PIN) {
-            TreeNode* travelTree = root;
-            while (travelTree != nullptr) {
-            if (travel->NIK == travelTree->NIK) break;
-            if (travel->NIK < travelTree->NIK) travelTree = travelTree->left;
-            else travelTree = travelTree->right;
+        return false;
     }
 
-            if (travelTree == nullptr) {
-                cout << "Akun tidak ditemukan" << endl << endl;
-                return;
+    /**
+     * @brief Memeriksa apakah username sudah ada.
+     */
+    bool isUsernameExist(const string& username) {
+        int hashCode = hashFunction(username);
+        Node* travel = hashTable[hashCode];
+        while (travel != nullptr) {
+            if (username == travel->username) {
+                return true;
             }
-
-            if (!travelTree->status) {
-                cout << "Akun dengan NIK " << travelTree->NIK << " sedang diblokir. Silahkan hubungi Admin." << endl;
-                return;
-            }
-
-            cout << "Berhasil login sebagai " << travel->username << endl << endl;
-            if (username == "admin") {
-                // Fitur admin
-                Admin();
-            } else {
-                // Fitur nasabah
-                Nasabah();
-            }
-            return;
+            travel = travel->next;
         }
-        travel = travel->next;
+        return false;
     }
-    cout << "Username atau Pin salah" << endl << endl;
-}
 
-void registrasi() {
-    string username{}, PIN{}, NIK{}, noRekening{};
-    double SaldoAwal{};
+    /**
+     * @brief Memvalidasi format PIN (harus 6 digit angka).
+     */
+    bool isValidPin(const string& pin) {
+        return pin.length() == 6 && all_of(pin.begin(), pin.end(), ::isdigit);
+    }
 
-    cout << "===================" << endl;
-    cout << "  MENU REGISTRASI" << endl;
-    cout << "===================" << endl;
-
-    // username valid?
-    while (true) {
-        cout << "Masukkan Nama: ";
-        cin >> username;
-
-        bool usernamedahada = false;
-        for (int i = 0; i < TABLESIZE; i++) {
+    /**
+     * @brief Memeriksa apakah NIK sudah ada di seluruh tabel.
+     */
+    bool isNIKExist(const string& nik) {
+        for (int i = 0; i < TABLE_SIZE; ++i) {
             Node* travel = hashTable[i];
             while (travel != nullptr) {
-                if (username == travel->username) {
-                    usernamedahada = true;
-                    break;
+                if (travel->nik == nik) {
+                    return true;
                 }
                 travel = travel->next;
             }
-            if (usernamedahada) break;
         }
-
-        if (usernamedahada) {
-            cout << "Username sudah terdaftar" << endl;
-        } else {
-            break; // keluar dari loop username
-        }
+        return false;
     }
 
-    // pin valid?
-    while (true) {
-        cout << "Masukkan Pin (6 digit): ";
-        cin >> PIN;
-        if (PIN.length() == 6 && all_of(PIN.begin(), PIN.end(), ::isdigit)) {
-            break;
-        } else {
-            cout << "PIN harus 6 digit angka" << endl;
-        }
-    }
-
-    // nik valid?
-    while (true) {
-        cout << "Masukkan NIK: ";
-        cin >> NIK;
-
-        bool nikdahada = false;
-        for (int i = 0; i < TABLESIZE; i++) {
+    /**
+     * @brief Mencetak seluruh isi hash table untuk debugging.
+     */
+    void printHashTable() {
+        cout << "\n--- Isi Hash Table ---" << endl;
+        for (int i = 0; i < TABLE_SIZE; ++i) {
             Node* travel = hashTable[i];
+            cout << "Index " << i << ": ";
             while (travel != nullptr) {
-                if (NIK == travel->NIK) {
-                    nikdahada = true;
-                    break;
-                }
+                cout << "{U: " << travel->username << ", P: " << travel->pin << "} -> ";
                 travel = travel->next;
             }
-            if (nikdahada) break;
+            cout << "nullptr" << endl;
         }
+        cout << "----------------------" << endl;
+    }
+};
 
-        if (nikdahada) {
-            cout << "NIK sudah terdaftar, silahkan ganti NIK lain" << endl;
+// --- IMPLEMENTASI BINARY SEARCH TREE ---
+class BinaryTreeNasabah {
+private:
+    struct TreeNode {
+        Nasabah data;
+        TreeNode* left;
+        TreeNode* right;
+
+        TreeNode(const Nasabah& data)
+            : data(data), left(nullptr), right(nullptr) {}
+    };
+
+    TreeNode* root;
+
+    /**
+     * @brief Fungsi rekursif untuk menyisipkan node baru.
+     */
+    TreeNode* insert(TreeNode* node, const Nasabah& nasabah) {
+        if (node == nullptr) return new TreeNode(nasabah);
+
+        if (nasabah.IdNasabah < node->data.IdNasabah)
+            node->left = insert(node->left, nasabah);
+        else if (nasabah.IdNasabah > node->data.IdNasabah)
+            node->right = insert(node->right, nasabah);
+        
+        return node;
+    }
+
+    /**
+     * @brief Fungsi rekursif untuk menampilkan data (In-Order Traversal).
+     */
+    void InOrderTraversal(TreeNode* node) {
+        if (node == nullptr) return;
+
+        InOrderTraversal(node->left);
+        cout << "\n> ID Nasabah  : " << node->data.IdNasabah
+             << "\n  NIK         : " << node->data.nik
+             << "\n  Saldo       : " << fixed << setprecision(2) << node->data.saldo
+             << "\n  No Rekening : " << node->data.NoRekening
+             << "\n  Status      : " << (node->data.aktif ? "Aktif" : "Diblokir") << endl;
+        InOrderTraversal(node->right);
+    }
+
+    /**
+     * @brief Fungsi rekursif untuk menghapus semua node (membersihkan memori).
+     */
+    void destroy(TreeNode* node) {
+        if (!node) return;
+        destroy(node->left);
+        destroy(node->right);
+        delete node;
+    }
+
+public:
+    BinaryTreeNasabah() : root(nullptr) {}
+
+    ~BinaryTreeNasabah() {
+        destroy(root);
+    }
+
+    void insertTree(const Nasabah& data) {
+        root = insert(root, data);
+    }
+
+    void DisplayInOrderAllNasabah() {
+        cout << "\n--- Data Nasabah (Binary Tree) ---" << endl;
+        if(root == nullptr){
+            cout << "   (Tidak ada data nasabah)" << endl;
         } else {
-            break;
+            InOrderTraversal(root);
         }
+        cout << "----------------------------------" << endl;
     }
-
-    // norek valid?
-    while (true) {
-        cout << "Masukkan No Rekening: ";
-        cin >> noRekening;
-
-        bool norekdahada = false;
-        TreeNode* cek = root;
-        while (cek != nullptr) {
-            if (noRekening == cek->noRekening) {
-                norekdahada = true;
-                break;
-            } 
-            if (noRekening < cek->noRekening) {
-                cek = cek->left;
-            } else {
-                cek = cek->right;
-            }
-        }
-        if (norekdahada) {
-            cout << "No Rekening sudah terdaftar, silahkan ganti No Rekening lain" << endl;
-        } else {
-            break; 
-        }
-    }
-
-    // saldo valid?
-    cout << "Masukkan Saldo: ";
-    while (!(cin >> SaldoAwal) || SaldoAwal < 0) {
-        cout << "Input tidak valid, silahkan masukkan angka >= 0: ";
-        cin.clear();
-    }
-
-    // semua aman? oke masukin
-    insertHash(username, PIN, NIK);
-    root = insertTree(NIK, noRekening, SaldoAwal);
-    cout << "Registrasi berhasil" << endl;
-    cout << "Silakan login untuk melanjutkan" << endl << endl;
-}
+};
 
 
-int main(){
-    // variabel
-    char pilihan;
-    bool exit = false;
+// =================================================================
+// == BAGIAN 4: VIEW (Tampilan Antarmuka Pengguna)
+// =================================================================
 
-    // Hardcoded data (REMINDER: DATA NIK DI HASHTABLE DAN TREE HARUS SAMA  - Rizki)
-    // Username, PIN, NIK (HASHTABLE)
-    insertHash("admin", "234567", "111111");
-    insertHash("adelio", "123456", "222222");
-    insertHash("boy", "098765", "333333");
-    insertHash("rizki", "112233", "444444");
-    insertHash("naufal", "445566", "555555");
-
-    // NIK, No Rekening, Saldo Awal (TREE) 
-    insertTree("111111", "1234567890", 1000000.00, true); // Admin
-    insertTree("222222", "0987654321", 500000.00, true); // adelio
-    insertTree("333333", "1122334455", 750000.00, true); // boy
-    insertTree("444444", "5566778899", 300000.00, true); // rizki
-    insertTree("555555", "6677889900", 200000.00, true); // naufal
-
-    // clear console
-    #ifdef _WIN32
-        system("cls");
-    #elif __linux__
-        system("clear");
-    #endif
-
-    // main program
-    while(!exit){
-        cout << "============" << endl;
-        cout << "    BANK" << endl;
-        cout << "Friendly reminder to delete unnecessary comments before presentation! - Rizki" << endl; 
-        cout << "============" << endl;
-        cout << "1. Login" << endl;
-        cout << "2. Register" << endl;
-        cout << "3. Print Data HashTable and Tree" << endl;
+class MainView {
+public:
+    /**
+     * @brief Menampilkan menu utama aplikasi.
+     */
+    static void tampilkanMenuUtama() {
+        cout << "\n===== E-BANKING KELOMPOK 5 =====" << endl;
+        cout << "1. Registrasi Nasabah Baru" << endl;
+        cout << "2. Login Nasabah" << endl;
+        cout << "3. (Debug) Tampilkan Semua Data" << endl;
         cout << "0. Keluar" << endl;
-        cout << "Masukkan pilihan: "; cin >> pilihan;
-        switch(pilihan){
-        case '0':
-            cout << "Terima kasih telah menggunakan program ini!" << endl;
-            exit = true;
-            break;
-        case '1':
-            login();
-            break;
-        case '2':
-            registrasi();
-            break;
-        case '3':
-            printHashAndTree(root);
-            break;
-        default:
-            cout << "Input tidak valid" << endl;
-            break;
+        cout << "================================" << endl;
+        cout << "Masukkan pilihan Anda: ";
+    }
+
+    /**
+     * @brief Menampilkan pesan jika input tidak valid.
+     */
+    static void tampilkanPesanTidakValid() {
+        cout << "\n[!] Pilihan tidak valid. Silakan coba lagi." << endl;
+    }
+
+    /**
+     * @brief Membersihkan layar konsol.
+     */
+    static void clearScreen() {
+        #ifdef _WIN32
+            system("cls");
+        #else
+            system("clear");
+        #endif
+    }
+};
+
+
+// =================================================================
+// == BAGIAN 5: DATA DUMMY (Untuk Pengujian)
+// =================================================================
+
+/**
+ * @brief Mengisi hash table dan tree dengan data contoh.
+ * @param hash Referensi ke objek Hash.
+ * @param tree Referensi ke objek BinaryTreeNasabah.
+ */
+void loadDummyData(Hash& hash, BinaryTreeNasabah& tree) {
+    // Dummy 1
+    string id1 = generateIdNasabah();
+    string rek1 = generateNoRekening();
+    hash.insertAkun(Akun("admin", "123123", "1111111111", id1));
+    tree.insertTree(Nasabah(id1, "1111111111", 500000.0, rek1));
+
+    // Dummy 2
+    string id2 = generateIdNasabah();
+    string rek2 = generateNoRekening();
+    hash.insertAkun(Akun("adelio", "123456", "2222222222", id2));
+    tree.insertTree(Nasabah(id2, "2222222222", 2500000.0, rek2));
+
+    cout << "[OK] Data dummy berhasil dimuat." << endl;
+}
+
+
+// =================================================================
+// == BAGIAN 6: CONTROLLER (Logika Aplikasi)
+// =================================================================
+
+// --- CONTROLLER UNTUK LOGIN ---
+class LoginController {
+private:
+    Hash* hashTable;
+
+public:
+    LoginController(Hash* hashTable) : hashTable(hashTable) {}
+
+    bool loginUser() {
+        string username, pin;
+
+        cout << "\n--- LOGIN NASABAH ---" << endl;
+        cout << "Masukkan username : ";
+        cin >> username;
+        cout << "Masukkan PIN      : ";
+        cin >> pin;
+
+        if (hashTable->isNodeFound(username, pin)) {
+            cout << "\n[OK] Login berhasil! Selamat datang, " << username << "!" << endl;
+            // Di sini bisa ditambahkan logika untuk masuk ke menu nasabah
+            return true;
+        } else {
+            cout << "\n[!] Login gagal! Username atau PIN salah." << endl;
+            return false;
         }
     }
+};
+
+// --- CONTROLLER UNTUK REGISTRASI ---
+class RegisterController {
+private:
+    Hash* hashTable;
+    BinaryTreeNasabah* treeNasabah;
+
+public:
+    RegisterController(Hash* hashTable, BinaryTreeNasabah* treeNasabah)
+        : hashTable(hashTable), treeNasabah(treeNasabah) {}
+
+    void RegisterUser() {
+        string username, pin, nik, norekening;
+        double saldo;
+
+        cout << "\n--- REGISTRASI NASABAH ---" << endl;
+
+        // Validasi Username
+        while (true) {
+            cout << "Masukkan username baru: ";
+            cin >> username;
+            if (hashTable->isUsernameExist(username)) {
+                cout << "[!] Username '" << username << "' sudah terdaftar, coba lagi.\n";
+            } else break;
+        }
+
+        // Validasi PIN
+        while (true) {
+            cout << "Masukkan PIN (6 digit angka): ";
+            cin >> pin;
+            if (!hashTable->isValidPin(pin)) {
+                cout << "[!] PIN harus terdiri dari 6 digit angka.\n";
+            } else break;
+        }
+
+        // Validasi NIK
+        while (true) {
+            cout << "Masukkan NIK: ";
+            cin >> nik;
+            if (hashTable->isNIKExist(nik)) {
+                cout << "[!] NIK ini sudah terdaftar, coba lagi.\n";
+            } else break;
+        }
+
+        // Input Saldo Awal
+        cout << "Masukkan saldo awal: ";
+        cin >> saldo;
+
+        // Generate otomatis ID dan No Rekening
+        string idNasabah = generateIdNasabah();
+        norekening = generateNoRekening();
+
+        // Buat objek dan masukkan ke struktur data
+        hashTable->insertAkun(Akun(username, pin, nik, idNasabah));
+        treeNasabah->insertTree(Nasabah(idNasabah, nik, saldo, norekening, true));
+
+        // Konfirmasi
+        cout << "\n[OK] Registrasi berhasil!" << endl;
+        cout << "   ID Nasabah Anda  : " << idNasabah << endl;
+        cout << "   No Rekening Anda : " << norekening << endl;
+    }
+};
+
+// --- CONTROLLER UTAMA (Orkestrator Aplikasi) ---
+class MainController {
+private:
+    Hash hashTable;
+    BinaryTreeNasabah tree;
+    RegisterController regController;
+    LoginController loginController;
+    bool exitApp = false;
+
+public:
+    MainController()
+        : regController(&hashTable, &tree),
+          loginController(&hashTable) {}
+
+    void run() {
+        char pilihan;
+        MainView::clearScreen();
+        cout << "Memuat aplikasi e-banking..." << endl;
+        loadDummyData(hashTable, tree);
+
+        while (!exitApp) {
+            MainView::tampilkanMenuUtama();
+            cin >> pilihan;
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Membersihkan buffer
+
+            switch (pilihan) {
+                case '1':
+                    regController.RegisterUser();
+                    break;
+                case '2':
+                    loginController.loginUser();
+                    break;
+                case '3':
+                    hashTable.printHashTable();
+                    tree.DisplayInOrderAllNasabah();
+                    break;
+                case '0':
+                    exitApp = true;
+                    cout << "\nTerima kasih telah menggunakan aplikasi kami. Sampai jumpa!" << endl;
+                    break;
+                default:
+                    MainView::tampilkanPesanTidakValid();
+            }
+        }
+    }
+};
+
+
+// =================================================================
+// == BAGIAN 7: FUNGSI MAIN (Titik Masuk Program)
+// =================================================================
+
+int main() {
+    // Membuat objek MainController yang akan menjalankan seluruh aplikasi
+    MainController app;
+    
+    // Memulai aplikasi
+    app.run();
+    
+    return 0; // Mengindikasikan program berakhir dengan sukses
 }
